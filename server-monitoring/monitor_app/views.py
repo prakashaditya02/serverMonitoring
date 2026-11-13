@@ -8,9 +8,10 @@ from django.db.models.functions import TruncHour
 from django.db.models import Avg
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework import status
 from .serializers import RecordSerializer, AlertSerializer, MetricSerializer
+from django.contrib.auth.decorators import login_required
 
 
 class MetricsPush(APIView):
@@ -81,7 +82,7 @@ Time: {timezone.now()}"""
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-
+@login_required
 def DashboardView(request):
     server_instances = Record.objects.order_by().values_list(
         'instance_name', flat=True
@@ -91,7 +92,7 @@ def DashboardView(request):
 
 
 class MetricsFetch(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         instance_name = request.query_params.get('instance', None)
