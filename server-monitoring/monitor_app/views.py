@@ -122,7 +122,7 @@ class MetricsFetch(APIView):
 
 
 class LatestRecordFetch(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         queryset = Record.objects.order_by(
@@ -133,7 +133,7 @@ class LatestRecordFetch(APIView):
 
 
 class ActiveAlerts(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get(self, request):
         queryset = Alert.objects.all().order_by('-trigger_time')[:10]
