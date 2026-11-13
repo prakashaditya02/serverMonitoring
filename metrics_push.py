@@ -1,8 +1,11 @@
 import subprocess, os, socket, requests
 
 instanceName = socket.gethostname()
-api_endpoint = "http://127.0.0.1:8000/api/v1/metrics/push/"
-api_token = os.environ.get('METRICS_API_TOKEN', '')
+api_endpoint = os.environ.get(
+    'METRICS_API_URL',
+    'http://127.0.0.1:8000/api/v1/metrics/push/'
+)
+api_token = os.environ.get('METRICS_API_TOKEN')
 
 def run_script(sh_path):
     try:
@@ -13,11 +16,13 @@ def run_script(sh_path):
         return None
 
 def push_metrics(metrics):
+    if not api_token:
+        print("Error: METRICS_API_TOKEN not configured")
     try:
         headers = {}
         if api_token:
             headers['Authorization'] = f'Token {api_token}'
-        response = requests.post(api_endpoint, json=metrics, headers=headers)
+        response = requests.post(api_endpoint, json=metrics, headers=headers, timeout=10)
         print("Response: ", response.status_code, response.text)
         return response.status_code
     except Exception as e:
