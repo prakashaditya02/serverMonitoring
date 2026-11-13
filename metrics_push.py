@@ -1,4 +1,7 @@
 import subprocess, os, socket, requests
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
 
 instanceName = socket.gethostname()
 api_endpoint = os.environ.get(

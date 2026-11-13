@@ -126,7 +126,7 @@ pip install -r requirements.txt
 1. Create database
 ```sql
 CREATE DATABASE monitoring;
-CREATE USER nova WITH PASSWORD 'root';
+CREATE USER nova WITH PASSWORD 'change-me';
 GRANT ALL PRIVILEGES ON DATABASE monitoring TO nova;
 GRANT ALL PRIVILEGES ON SCHEMA public TO nova;
 ```
@@ -135,7 +135,7 @@ GRANT ALL PRIVILEGES ON SCHEMA public TO nova;
 ```
 export DB_NAME='monitoring'
 export DB_USER='nova'
-export DB_PASSWORD='root'
+export DB_PASSWORD='change-me'
 
 export DJANGO_SECRET_KEY='<YOUR_RANDOM_SECRET_KEY>'
 export EMAIL_HOST_USER='your.monitoring.sender@gmail.com'
