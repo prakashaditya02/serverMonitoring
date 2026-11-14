@@ -28,8 +28,8 @@ Cloud-Native Server Monitoring API with Per-Instance Alerting and Push Model
 │                                   fires Alert + email        │
 │                                                              │
 │  GET  /api/v1/metrics/latest/  - latest per server           │
-│  GET  /api/v1/metrics/timeseries/ - hourly averages          │
-│  GET  /api/v1/alerts/active    - last 10 alerts              │
+│  GET  /api/v1/metrics/timeseries/ - history for all servers  │
+│  GET  /api/v1/alerts/active/   - last 10 alerts              │
 │                                                              │
 │  ┌─────────────────────┐     ┌──────────────────────────┐    │
 │  │     PostgreSQL      │     │      Gmail SMTP          │    │
@@ -39,7 +39,7 @@ Cloud-Native Server Monitoring API with Per-Instance Alerting and Push Model
 │                                                              │
 │  DASHBOARD (auto-refreshing)                                 │
 │    ├── Status cards     ── polls every 10s                   │
-│    ├── Historical chart ── refreshes every 5min              │
+│    ├── All-server chart ── refreshes every 5min              │
 │    └── Alert feed       ── polls every 20s                   │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -53,8 +53,8 @@ Cloud-Native Server Monitoring API with Per-Instance Alerting and Push Model
 3. **Store & Alert** — The API stores the metrics in PostgreSQL. If a `Threshold` exists for that server instance, the API checks CPU/memory/disk against the configured limits. If exceeded, an `Alert` record is created and an email is sent (with a 2-minute cooldown per metric type to prevent flooding).
 
 4. **Visualize** — The dashboard at `/dashboard/` auto-refreshes:
-   - Status cards show live metrics (polls `/api/v1/metrics/latest/` every 10s)
-   - Historical chart shows hourly averages over 48h (refreshes every 5min)
+   - Status cards show live metrics, thresholds, and offline state (polls `/api/v1/metrics/latest/` every 10s)
+   - The chart compares all servers as separate lines, with CPU/memory/disk and 6h–7d ranges (refreshes every 5min)
    - Alert feed shows the 10 most recent alerts (polls every 20s)
 
 ### Tech Stack
@@ -64,7 +64,7 @@ Cloud-Native Server Monitoring API with Per-Instance Alerting and Push Model
 | Backend            | Django 5.2, Django REST Framework|
 | Database           | PostgreSQL                       |
 | Frontend           | Bootstrap 5.3, Chart.js 4.4      |
-| Auth               | DRF Token Authentication         |
+| Auth               | DRF Token + Django session auth  |
 | Metrics Collection | Bash scripts + Python pusher     |
 | Email Alerts       | Django SMTP (Gmail)              |
 
@@ -86,21 +86,31 @@ server-monitor/
     │   └── settings.py        # DB, email, REST_FRAMEWORK, security config
     └── monitor_app/           # Main application
         ├── models.py          # Record, Alert, Threshold
-        ├── views.py           # API endpoints + dashboard view
+        ├── views.py           # API endpoints, dashboard, threshold pages
+        ├── forms.py           # Threshold add/edit form
         ├── serializers.py     # DRF serializers
         ├── admin.py           # Admin panel configuration
         ├── tests.py           # API and model tests
         ├── migrations/        # Database migrations
+        ├── static/
+        │   └── monitor_app/
+        │       └── dashboard.js
         └── templates/
-            └── dashboard.html # Auto-refreshing dashboard
+            ├── base.html
+            ├── registration/login.html
+            └── monitor_app/
+                ├── dashboard.html
+                ├── threshold_list.html
+                ├── threshold_form.html
+                └── threshold_confirm_delete.html
 ```
 
 ### Key Concepts
 
 - **Push Model** — Each server pushes its own metrics (vs. a central server pulling/scraping). This is more scalable and works across firewalls.
-- **Per-Instance Thresholds** — Each server can have its own CPU/memory/disk limits configured via the Django admin.
+- **Per-Instance Thresholds** — Each server can have its own CPU/memory/disk limits, configured at `/thresholds/` or in the Django admin.
 - **Alert Deduplication** — The same metric type on the same server won't re-alert within 2 minutes.
-- **Token Authentication** — Only servers with a valid API token can push metrics. Dashboard endpoints are public.
+- **Token Authentication** — Only servers with a valid API token can push metrics. Dashboard pages and read APIs require a logged-in session; threshold management is staff-only.
 
 ## Local Setup
 
@@ -160,8 +170,12 @@ export METRICS_API_TOKEN='your-token-here'
 
 5. Configure
 Start server - `python server-monitoring/manage.py runserver`
-Access Admin - http://127.0.0.1:8000/admin/
-Find Threshold, click "Add threshold", set server instance to match the hostname returned by `socket.gethostname()` on your monitored machine.
+Log in - http://127.0.0.1:8000/accounts/login/
+Dashboard - http://127.0.0.1:8000/dashboard/
+Thresholds - http://127.0.0.1:8000/thresholds/ (staff users only)
+Set the server instance to match the hostname returned by `socket.gethostname()` on your monitored machine.
+
+The Django admin remains available at http://127.0.0.1:8000/admin/ for user management.
 
 ## Final Starting
 

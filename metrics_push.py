@@ -21,6 +21,7 @@ def run_script(sh_path):
 def push_metrics(metrics):
     if not api_token:
         print("Error: METRICS_API_TOKEN not configured")
+        return None
     try:
         headers = {}
         if api_token:
