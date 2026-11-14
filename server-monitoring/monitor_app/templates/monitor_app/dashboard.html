@@ -1,189 +1,80 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" integrity="sha384-JUh163oCRItcbPme8pYnROHQMC6fNKTBWtRG3I3I0erJkzNgL7uxKlNwcrcFKeqF" crossorigin="anonymous"></script>
-</head>
-<body>
-    <div class="container-fluid">
-        <h2 class="mb-4">System Overview</h2>
-        <div id="error-banner" class="alert alert-danger d-none" role="alert"></div>
-        <div class="row" id="status-cards-container"></div>
-        <div class="row">
-            <div class="col-md-8">
-                <div class="card shadow mb-4">
-                    <div class="card-header justify-content-between align-items-center">Historical Metrics
-                        <select id="server-select" class="form-select w-auto">
-                            <option value="">All Instances</option>
-                            {% for instance in server_instances %}
-                                <option value="{{ instance }}">{{ instance }}</option>
-                            {% endfor %}
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Dashboard | Server Monitor{% endblock %}
+
+{% block content %}
+<div
+    id="dashboard"
+    data-latest-url="{% url 'latest-record-fetch-api' %}"
+    data-timeseries-url="{% url 'metrics-fetch-api' %}"
+    data-alerts-url="{% url 'active-alerts-api' %}"
+    data-thresholds-url="{% url 'threshold-list' %}"
+    data-login-url="{% url 'login' %}"
+    data-is-staff="{{ user.is_staff|yesno:'true,false' }}"
+>
+    <h1 class="h3 mb-4">System Overview</h1>
+
+    <div id="metrics-error" class="alert alert-danger d-none" role="alert"></div>
+    <div class="row" id="status-cards-container"></div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <span>Historical Metrics</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <select id="metric-select" class="form-select form-select-sm w-auto" aria-label="Metric">
+                            <option value="cpu">CPU</option>
+                            <option value="memory">Memory</option>
+                            <option value="disk">Disk</option>
+                        </select>
+                        <select id="range-select" class="form-select form-select-sm w-auto" aria-label="Time range">
+                            <option value="6h">Last 6 hours</option>
+                            <option value="24h">Last 24 hours</option>
+                            <option value="48h" selected>Last 48 hours</option>
+                            <option value="7d">Last 7 days</option>
                         </select>
                     </div>
-                    <div class="card-body">
-                        <canvas id="metricChart" style="height: 500px;"></canvas>
-                    </div>
                 </div>
-            </div>
-            
-            <div class="col-md-4">
-                <div class="card shadow mb-4">
-                    <div class="card-header bg-danger text-white">Alerts</div>
-                    <ul class="list-group list-group-flush" id="alerts-list">
-                    </ul>
+                <div class="card-body">
+                    <div id="chart-error" class="alert alert-danger d-none" role="alert"></div>
+                    <div id="chart-empty" class="text-muted d-none">No metric data for this range.</div>
+                    <canvas id="metricChart" style="height: 500px;" role="img" aria-label="Metric history for all servers"></canvas>
                 </div>
             </div>
         </div>
+
+        <div class="col-lg-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-danger text-white">Alerts</div>
+                <div id="alerts-error" class="alert alert-danger d-none m-3 mb-0" role="alert"></div>
+                <ul class="list-group list-group-flush" id="alerts-list" aria-live="polite"></ul>
+            </div>
+        </div>
     </div>
+</div>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<template id="server-card-template">
+    <div class="col-md-6 col-xl-3 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+                    <h2 class="h5 card-title mb-0 server-name"></h2>
+                    <span class="badge d-none status-badge"></span>
+                </div>
+                <p class="card-text mb-1 metric-cpu"></p>
+                <p class="card-text mb-1 metric-memory"></p>
+                <p class="card-text mb-1 metric-disk"></p>
+                <p class="card-text small text-muted mb-2 last-seen"></p>
+                <a class="btn btn-sm btn-outline-secondary threshold-link d-none"></a>
+            </div>
+        </div>
+    </div>
+</template>
+{% endblock %}
 
-<script>
-
-    let metricsChart = null;
-
-    function showError(msg) {
-        var banner = document.getElementById('error-banner');
-        banner.textContent = msg;
-        banner.classList.remove('d-none');
-    }
-
-    function hideError() {
-        document.getElementById('error-banner').classList.add('d-none');
-    }
-
-    function updateLiveMetrics(){
-        fetch('/api/v1/metrics/latest/')
-        .then(function(response){
-            if (!response.ok){
-                throw new Error("Response Status: " + response.status);
-            }
-            return response.json();
-        })
-        .then(function(data){
-            hideError();
-            var statusContainer = document.getElementById('status-cards-container');
-            var html = '';
-            data.forEach(function(metric){
-                var timeStr = new Date(metric.timing).toLocaleTimeString();
-                html += `
-                <div class="col-md-3 mb-4">
-                    <div class="card shadow">
-                        <div class="card-body">
-                            <h5 class="card-title">${metric.instance_name}</h5>
-                            <p class="card-text">CPU: ${metric.cpu}%</p>
-                            <p class="card-text">Memory: ${metric.memory}%</p>
-                            <p class="card-text">Disk: ${metric.disk}%</p>
-                            <p class="card-text small">Time: ${timeStr}</p>
-                        </div>
-                    </div>
-                </div>`;
-            });
-            statusContainer.innerHTML = html;
-        })
-        .catch(function(error){
-            showError("Failed to load server metrics. Is the API running?");
-            console.error("Error while fetching: ", error);
-        })
-    }
-
-function fetchAndRenderChart(instanceName){
-    fetch('/api/v1/metrics/timeseries/?instance=' + instanceName)
-        .then(function(response){
-            if (!response.ok) {
-                throw new Error('Error: ' + response.status);
-            }
-            return response.json();
-        })
-        .then(function(data){
-            hideError();
-            if (metricsChart){
-                metricsChart.destroy();
-            }
-            var canvas = document.getElementById('metricChart');
-
-            if (!canvas){
-                console.error("Canvas Error");
-                return;
-            }
-            var config = {type:'line', data: {
-                labels: data.labels,
-                datasets: data.datasets.map(function(dataset){
-                    return {
-                        label: dataset.label,
-                        data: dataset.data
-                    };
-                }) 
-            },
-            options: {maintainAspectRatio: false}
-            };
-        metricsChart = new Chart(canvas, config);
-        })
-        .catch(function(error){
-            showError("Failed to load historical metrics.");
-            console.error("Error fetching: ", error)
-        })
-    }
-
-function alertFeed(){
-    fetch('/api/v1/alerts/active')
-        .then(function(response){
-            if (!response.ok){
-                throw new Error('Response Status: ' + response.status);
-            }
-            return response.json();
-        })
-        .then(function(data){
-            hideError();
-            var alertList = document.getElementById('alerts-list');
-            if (!alertList) {
-                console.error("Container not Found");
-                return;
-            }
-            var html = '';
-            data.forEach(function(alert){
-                var alertTime = new Date(alert.trigger_time).toLocaleString();
-                html += `
-                <li class="list-group-item justify-content-between align-items-start">
-                    <div class="ms-2 me-auto">
-                        <div class="fw-bold text-danger">${alert.metric_type.toUpperCase()} usage on ${alert.server_instance}</div>
-                        Value: ${alert.value}%
-                    </div>
-                    <span class="badge bg-secondary">${alertTime}</span>
-                </li>`;
-            });
-            alertList.innerHTML = html;
-        })
-        .catch(function(error){
-            showError("Failed to load alerts.");
-            console.error('Error fetching: ', error);
-        });
-}
-
-
-document.addEventListener('DOMContentLoaded', function() {
-    const serverSelect = document.getElementById('server-select');
-    updateLiveMetrics();
-    alertFeed();
-    if (serverSelect){
-        serverSelect.addEventListener('change', function(event){
-            const instanceName = event.target.value;
-            fetchAndRenderChart(instanceName);
-        });
-        fetchAndRenderChart(serverSelect.value);
-        setInterval(updateLiveMetrics, 10000);
-        setInterval(alertFeed, 20000);
-        setInterval(function(){
-            fetchAndRenderChart(serverSelect.value);
-        }, 300000);
-    }
-    else {
-        console.error("server-select not found")
-    }
-});
-</script>
-</body>
-</html>
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js" integrity="sha384-JUh163oCRItcbPme8pYnROHQMC6fNKTBWtRG3I3I0erJkzNgL7uxKlNwcrcFKeqF" crossorigin="anonymous"></script>
+<script src="{% static 'monitor_app/dashboard.js' %}"></script>
+{% endblock %}

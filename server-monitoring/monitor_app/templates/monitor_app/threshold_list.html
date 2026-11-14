@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block title %}Thresholds | Server Monitor{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Thresholds</h1>
+    <a class="btn btn-primary" href="{% url 'threshold-add' %}">Add threshold</a>
+</div>
+
+{% if thresholds %}
+    <div class="card shadow-sm">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th scope="col">Server</th>
+                        <th scope="col">CPU</th>
+                        <th scope="col">Memory</th>
+                        <th scope="col">Disk</th>
+                        <th scope="col">Recipients</th>
+                        <th scope="col" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for threshold in thresholds %}
+                        <tr>
+                            <td class="fw-semibold">{{ threshold.server_instance }}</td>
+                            <td>{{ threshold.cpu_threshold }}%</td>
+                            <td>{{ threshold.memory_threshold }}%</td>
+                            <td>{{ threshold.disk_threshold }}%</td>
+                            <td>
+                                {% if threshold.recipients %}
+                                    {{ threshold.recipients|length }} recipient{{ threshold.recipients|length|pluralize }}
+                                {% else %}
+                                    <span class="text-muted">Global default</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-secondary" href="{% url 'threshold-edit' threshold.pk %}">Edit</a>
+                                <a class="btn btn-sm btn-outline-danger" href="{% url 'threshold-delete' threshold.pk %}">Delete</a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+{% else %}
+    <div class="alert alert-info" role="alert">
+        No thresholds configured yet.
+        <a href="{% url 'threshold-add' %}" class="alert-link">Add the first threshold</a>.
+    </div>
+{% endif %}
+{% endblock %}

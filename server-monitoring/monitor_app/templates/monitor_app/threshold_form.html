@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} | Server Monitor{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <h1 class="h3 mb-3">{{ page_title }}</h1>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <form method="post" novalidate>
+                    {% csrf_token %}
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger" role="alert">
+                            {% for error in form.non_field_errors %}
+                                <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label for="{{ form.server_instance.id_for_label }}" class="form-label">
+                            {{ form.server_instance.label }}
+                        </label>
+                        {{ form.server_instance }}
+                        <datalist id="known-servers">
+                            {% for server in known_servers %}
+                                <option value="{{ server }}">
+                            {% endfor %}
+                        </datalist>
+                        {% for error in form.server_instance.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.cpu_threshold.id_for_label }}" class="form-label">
+                                {{ form.cpu_threshold.label }}
+                            </label>
+                            {{ form.cpu_threshold }}
+                            {% for error in form.cpu_threshold.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.memory_threshold.id_for_label }}" class="form-label">
+                                {{ form.memory_threshold.label }}
+                            </label>
+                            {{ form.memory_threshold }}
+                            {% for error in form.memory_threshold.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="{{ form.disk_threshold.id_for_label }}" class="form-label">
+                                {{ form.disk_threshold.label }}
+                            </label>
+                            {{ form.disk_threshold }}
+                            {% for error in form.disk_threshold.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="{{ form.recipients.id_for_label }}" class="form-label">
+                            {{ form.recipients.label }}
+                        </label>
+                        {{ form.recipients }}
+                        {% if form.recipients.help_text %}
+                            <div class="form-text">{{ form.recipients.help_text }}</div>
+                        {% endif %}
+                        {% for error in form.recipients.errors %}
+                            <div class="invalid-feedback d-block">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Save</button>
+                        <a class="btn btn-outline-secondary" href="{% url 'threshold-list' %}">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

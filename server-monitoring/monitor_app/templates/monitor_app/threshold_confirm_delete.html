@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+
+{% block title %}Delete threshold | Server Monitor{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <h1 class="h3 mb-3">Delete threshold</h1>
+
+        <div class="card shadow-sm">
+            <div class="card-body">
+                <p>
+                    Delete the threshold for
+                    <strong>{{ object.server_instance }}</strong>?
+                </p>
+                <p class="text-muted mb-3">
+                    CPU {{ object.cpu_threshold }}% · Memory {{ object.memory_threshold }}% · Disk {{ object.disk_threshold }}%
+                </p>
+
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                        <a class="btn btn-outline-secondary" href="{% url 'threshold-list' %}">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
