@@ -116,7 +116,7 @@ server-monitor/
 
 1. Clone Repository
 ```
-git clone https://github.com/NightShadeNova/server-monitor.git
+git clone https://github.com/prakashaditya02/server-monitor.git
 cd server-monitor
 ```
 
@@ -291,9 +291,9 @@ The deployment uses AWS security groups to restrict communication between compon
 
 The current deployment uses **HTTP only**.
 
-- Nginx listens on port 80.The monitored instance sends metrics to the monitoring server using its private IP over HTTP.
+- Nginx listens on port 80. The monitored instance sends metrics to the monitoring server using its private IP over HTTP.
 - Gunicorn is bound to `127.0.0.1:8000` and is not directly exposed to the internet.
-- Django's SSL redirect and secure session/CSRF cookie settings are disabled for the current HTTP deployment (SECURE_SSL_REDIRECT=False, SESSION_COOKIE_SECURE=False, CSRF_COOKIE_SECURE=False).
+- Django's SSL redirect and secure session/CSRF cookie settings are disabled for the current HTTP deployment.
 
 ### Deployment Configurations
 
