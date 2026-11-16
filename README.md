@@ -183,3 +183,125 @@ The Django admin remains available at http://127.0.0.1:8000/admin/ for user mana
 ```
 nohup ./setup.sh &
 ```
+
+## AWS Deployment
+
+The application is deployed on AWS using two EC2 instances and an Amazon RDS PostgreSQL database. The deployment separates the monitoring application from the machines being monitored.
+
+### Deployment Architecture
+
+The deployment consists of three main components:
+
+- **Monitoring Server (EC2):** Hosts the Django application, Gunicorn application server and Nginx reverse proxy. It exposes the metrics ingestion API and serves the monitoring dashboard.
+- **Monitored Instance (EC2):** Runs a lightweight metrics collector that periodically gathers CPU, memory and disk usage and pushes the collected metrics to the monitoring server.
+- **Database (Amazon RDS):** Hosts the PostgreSQL database used to persist metric records and application data.
+
+The monitored instance runs in a private subnet and communicates with the monitoring server over the VPC's private network.
+
+### Architecture Flow
+
+```text
+                  Internet
+                     |
+                     | HTTP :80
+                     v
+          +-----------------------+
+          |   Monitoring EC2      |
+          |   Public Subnet       |
+          |                       |
+          |       Nginx           |
+          |         |             |
+          |         | Proxy       |
+          |         v             |
+          |      Gunicorn         |
+          |         |             |
+          |         v             |
+          |    Django + DRF       |
+          |         |             |
+          +---------|-------------+
+                    |
+                    | PostgreSQL :5432
+                    v
+          +-----------------------+
+          |    Amazon RDS         |
+          |    PostgreSQL         |
+          +-----------------------+
+
+          +-----------------------+
+          |    Monitored EC2      |
+          |    Private Subnet     |
+          |                       |
+          |   Metrics Collector   |
+          |          |            |
+          |   CPU / Memory / Disk |
+          +----------|------------+
+                     |
+                     | HTTP :80
+                     | Private IP
+                     v
+              Monitoring EC2
+              /api/v1/metrics/push/
+```
+
+### Infrastructure Overview
+
+| Component | Configuration |
+|---|---|
+| Cloud Provider | AWS |
+| Region | ap-south-1 |
+| Monitoring Server | EC2 (Ubuntu 24.04, t3.micro) |
+| Monitored Instance | EC2 (Ubuntu 24.04, t3.micro) |
+| Database | Amazon RDS PostgreSQL |
+| Application Server | Gunicorn |
+| Reverse Proxy | Nginx |
+| Process Management | systemd |
+
+### Metrics Collection and Data Flow
+
+1. The metrics collector executes periodically on the monitored EC2 instance.
+2. Shell scripts collect CPU, memory and disk usage.
+3. The collector sends the metrics to the monitoring server through the Django REST API, using token authentication.
+4. Django validates and processes the incoming metrics.
+5. The metrics are stored in the PostgreSQL database hosted on Amazon RDS.
+6. The dashboard retrieves the latest and historical metrics and displays them using Chart.js.
+7. Threshold-based alerting evaluates incoming metrics and generates alerts when configured limits are exceeded.
+
+### Application Deployment
+
+The Django application runs behind Gunicorn, with Nginx acting as the reverse proxy.
+
+- **Nginx** listens for incoming HTTP requests on port 80 and forwards application requests to Gunicorn. It also serves collected static files.
+- **Gunicorn** runs the Django WSGI application on `127.0.0.1:8000`.
+- **systemd** manages the Gunicorn process, ensuring that the application starts on boot and can be restarted independently.
+- **Static files** are collected using Django's `collectstatic` command and served by Nginx from `/var/www/server-monitoring/static/`.
+
+The metrics collector is also managed by systemd on the monitored EC2 instance. It runs independently of the Django application and automatically restarts if the process exits.
+
+### Network and Security Configuration
+
+The deployment uses AWS security groups to restrict communication between components.
+
+- SSH access to the monitoring server is restricted to the administrator's public IP.
+- The monitored instance accepts SSH access through the monitoring server, which acts as a bastion host.
+- The monitoring server accepts application traffic through HTTP on port 80.
+- The RDS instance accepts PostgreSQL connections only from the monitoring server's security group.
+- The monitored instance communicates with the monitoring server through its private IP address.
+
+### HTTP Configuration
+
+The current deployment uses **HTTP only**.
+
+- Nginx listens on port 80.The monitored instance sends metrics to the monitoring server using its private IP over HTTP.
+- Gunicorn is bound to `127.0.0.1:8000` and is not directly exposed to the internet.
+- Django's SSL redirect and secure session/CSRF cookie settings are disabled for the current HTTP deployment (SECURE_SSL_REDIRECT=False, SESSION_COOKIE_SECURE=False, CSRF_COOKIE_SECURE=False).
+
+### Deployment Configurations
+
+The following configuration examples are used to document
+the AWS deployment:
+
+| Configuration | Description |
+|---|---|
+| [Nginx](docs/config/nginx.conf) | Reverse proxy and static file serving |
+| [Gunicorn](docs/config/gunicorn.service) | Django application server |
+| [Metrics Collector](docs/config/metrics-collect.service) | systemd service for metrics collection |
