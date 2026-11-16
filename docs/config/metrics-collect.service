@@ -1,0 +1,17 @@
+https://www.dotlinux.net/blog/how-to-create-a-systemd-service-in-linux/
+
+[Unit]
+Description=Server Monitoring Metrics Collector
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/apps/serverMonitoring
+ExecStart=/home/ubuntu/apps/serverMonitoring/setup.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

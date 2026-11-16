@@ -305,3 +305,27 @@ the AWS deployment:
 | [Nginx](docs/config/nginx.conf) | Reverse proxy and static file serving |
 | [Gunicorn](docs/config/gunicorn.service) | Django application server |
 | [Metrics Collector](docs/config/metrics-collect.service) | systemd service for metrics collection |
+
+### Dashboard
+
+![Monitoring Dashboard](docs/screenshots/dashboard.png)
+
+### Alert Threshold
+
+![Threshold View](docs/screenshots/thresholds.png)
+
+### Alert Mail
+
+![Alert Mail](docs/screenshots/alert-mail.jpeg)
+
+### EC2 Instances
+
+![EC2 Instances](docs/screenshots/instances.png)
+
+### RDS PostgreSQL
+
+![RDS PostgreSQL Dashboard](docs/screenshots/rds-postgres.png)
+
+### VPC Route
+
+![VPC Route Chart](docs/screenshots/vpc-route.png)
